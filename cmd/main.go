@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"io"
 	"nas-knif/cmd/ssh_server"
+	"nas-knif/cmd/zerotier"
 	"os"
 	"strings"
 
@@ -81,8 +82,8 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					return ssh_server.InitialModel(), nil
 				case "安装ShellCrash":
 					return m, nil
-				case "安装Zerotier":
-					return nil, nil
+				case "Zerotier":
+					return zerotier.InitialModel(), nil
 
 				}
 			}
@@ -108,7 +109,7 @@ func (m model) View() string {
 func main() {
 	items := []list.Item{
 		item("SSH服务开启Root登录"),
-		item("安装Zerotier"),
+		item("Zerotier"),
 		item("安装ShellCrash"),
 	}
 
