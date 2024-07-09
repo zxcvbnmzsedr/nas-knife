@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"io"
+	"nas-knif/cmd/docker"
 	"nas-knif/cmd/ssh_server"
 	"nas-knif/cmd/zerotier"
 	"os"
@@ -80,10 +81,10 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				switch i {
 				case "SSH服务开启Root登录":
 					return ssh_server.InitialModel(), nil
-				case "安装ShellCrash":
-					return m, nil
 				case "Zerotier":
 					return zerotier.InitialModel(), nil
+				case "Docker":
+					return docker.InitialModel(), nil
 
 				}
 			}
@@ -110,7 +111,7 @@ func main() {
 	items := []list.Item{
 		item("SSH服务开启Root登录"),
 		item("Zerotier"),
-		item("安装ShellCrash"),
+		item("Docker"),
 	}
 
 	const defaultWidth = 20
