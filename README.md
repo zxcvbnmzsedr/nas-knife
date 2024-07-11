@@ -27,6 +27,7 @@
 2. key.keyinfo 秘钥描述
 3. encipher.key 秘钥
 4. out.ts 加密过的视频文件
+5. 给Emby用的movie.strm
 
 要求: 
 1. 安装ffmpeg

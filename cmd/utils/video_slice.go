@@ -50,7 +50,6 @@ func NewVideoSlice() *cobra.Command {
 	cmd.Flags().StringVarP(&opts.SourceFile, "source", "s", "", "源文件")
 	cmd.Flags().StringVarP(&opts.TargetFolderName, "folder", "f", "", "目录名")
 	return cmd
-
 }
 func slice(alistHost string, tsFilePath string, keyPath string, sourceFile string, targetFolderName string) error {
 	if keyPath == "" {
@@ -133,6 +132,33 @@ func slice(alistHost string, tsFilePath string, keyPath string, sourceFile strin
 		return err
 	}
 	cmd = exec.Command("rclone", "-P", "copy", "./encipher.key", "webdav:"+keyPath+targetFolderName)
+	stdout, err = cmd.StdoutPipe()
+	cmd.Stderr = cmd.Stdout
+
+	if err != nil {
+		return err
+	}
+	if err = cmd.Start(); err != nil {
+		return err
+	}
+	// 从管道中实时获取输出并打印到终端
+	for {
+		tmp := make([]byte, 1024)
+		_, err := stdout.Read(tmp)
+		fmt.Print(string(tmp))
+		if err != nil {
+			break
+		}
+	}
+	if err = cmd.Wait(); err != nil {
+		return err
+	}
+
+	if err = os.WriteFile("./movie.strm", []byte(alistHost+keyPath+targetFolderName+"/movie.strm"), 0666); err != nil {
+		log.Fatal(err)
+	}
+	// 数据拷贝
+	cmd = exec.Command("rclone", "-P", "copy", "movie.strm", "webdav:"+keyPath+targetFolderName)
 	stdout, err = cmd.StdoutPipe()
 	cmd.Stderr = cmd.Stdout
 
