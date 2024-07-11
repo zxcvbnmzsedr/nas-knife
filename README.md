@@ -34,7 +34,7 @@
 命令如下: 
 
 ```shell
-    nas-knife vl --alist http://ssssss \ 
+    nas-knife vl --alist http://ssssss/d \ 
     -t /aliyun/TS/ \ 
     -k /strm/av/ \
     -s /Downloads/SSIS-878.mp4 \ 
@@ -42,9 +42,9 @@
 ```
 
 参数说明：
-+ alist: 指定Host地址用于替换m3u8里面的文件为真实地址
++ alist: 指定Host地址用于替换m3u8里面的文件为真实地址, 得是/d结尾的代理地址，暂不支持开启签名使用
 + t: 目标网盘的地址
 + k: 本地盘的地址，比如SMB，文件秘钥分开 天王老子来也不知道文件里是啥
 + s: 本地视频文件地址
-+ f: 生成的目录名，比如番号？，SSIS-878这个骗子女主真的很顶
++ f: 生成的目录名，比如番号？，SSIS-878这个女主真的很顶
 
