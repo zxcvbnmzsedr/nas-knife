@@ -1,17 +1,20 @@
 package main
 
 import (
+	"context"
 	"fmt"
-	"io"
-	"nas-knif/cmd/docker"
-	"nas-knif/cmd/ssh_server"
-	"nas-knif/cmd/zerotier"
-	"os"
-	"strings"
-
 	"github.com/charmbracelet/bubbles/list"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
+	"github.com/fatih/color"
+	"io"
+	"nas-knif/cmd/docker"
+	"nas-knif/cmd/ssh_server"
+	"nas-knif/cmd/utils"
+	"nas-knif/cmd/zerotier"
+	"os"
+	"os/signal"
+	"strings"
 )
 
 const listHeight = 14
@@ -85,9 +88,6 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					return zerotier.InitialModel(), nil
 				case "Docker":
 					return docker.InitialModel(), nil
-				case "视频切片":
-					return docker.InitialModel()
-
 				}
 			}
 			return m, nil
@@ -110,26 +110,37 @@ func (m model) View() string {
 }
 
 func main() {
-	items := []list.Item{
-		item("SSH服务开启Root登录"),
-		item("Zerotier"),
-		item("Docker"),
-	}
+	if len(os.Args) > 1 {
+		ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt)
+		defer cancel()
 
-	const defaultWidth = 20
+		if err := utils.New().ExecuteContext(ctx); err != nil {
+			color.Red("Error: %+v", err)
+			os.Exit(1)
+		}
+	} else {
 
-	l := list.New(items, itemDelegate{}, defaultWidth, listHeight)
-	l.Title = "欢迎使用Nas-Knife"
-	l.SetShowStatusBar(false)
-	l.SetFilteringEnabled(false)
-	l.Styles.Title = titleStyle
-	l.Styles.PaginationStyle = paginationStyle
-	l.Styles.HelpStyle = helpStyle
+		items := []list.Item{
+			item("SSH服务开启Root登录"),
+			item("Zerotier"),
+			item("Docker"),
+		}
 
-	m := model{list: l}
+		const defaultWidth = 20
 
-	if _, err := tea.NewProgram(m).Run(); err != nil {
-		fmt.Println("Error running program:", err)
-		os.Exit(1)
+		l := list.New(items, itemDelegate{}, defaultWidth, listHeight)
+		l.Title = "欢迎使用Nas-Knife"
+		l.SetShowStatusBar(false)
+		l.SetFilteringEnabled(false)
+		l.Styles.Title = titleStyle
+		l.Styles.PaginationStyle = paginationStyle
+		l.Styles.HelpStyle = helpStyle
+
+		m := model{list: l}
+
+		if _, err := tea.NewProgram(m).Run(); err != nil {
+			fmt.Println("Error running program:", err)
+			os.Exit(1)
+		}
 	}
 }
