@@ -6,6 +6,9 @@ import (
 	"log"
 	"os"
 	"os/exec"
+	"path"
+	"path/filepath"
+	"strings"
 )
 
 type Options struct {
@@ -35,7 +38,8 @@ func NewVideoSlice() *cobra.Command {
 				return fmt.Errorf("SourceFile别空啊，要切片的视频文件")
 			}
 			if len(opts.TargetFolderName) == 0 {
-				return fmt.Errorf("TargetFolderName别空啊，不然我咋知道你的番号是啥？？")
+				_, fileName := filepath.Split(opts.SourceFile)
+				opts.TargetFolderName = strings.TrimSuffix(fileName, path.Ext(fileName))
 			}
 			return slice(opts.AlistHost, opts.TsFilePath, opts.KeyPath, opts.SourceFile, opts.TargetFolderName)
 		},
