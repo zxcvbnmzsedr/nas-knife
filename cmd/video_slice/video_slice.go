@@ -3,8 +3,8 @@ package video_slice
 import "os/exec"
 
 var alistHost = ""
-var TsFilePath = ""
-var KeyPath = ""
+var TsFilePath = "/aliyun/TS/"
+var KeyPath = "/strm/av/"
 
 func slice(sourceFile string, targetFolderName string) {
 	// 先创建秘钥
@@ -27,7 +27,7 @@ func slice(sourceFile string, targetFolderName string) {
 	cmd = exec.Command("ffmpeg", "-y", "-hwaccel", "videotoolbox", "-i", sourceFile,
 		"-vcodec", "copy", "-acodec", "copy",
 		"-f", "hls", "-hls_time", "15", "-hls_list_size", "0", "-hls_key_info_file", "/opt/nas-knife/video_slice/key.keyinfo", "-hls_playlist_type", "vod", "-hls_flags", "single_file",
-		"-hls_base_url", alistHost+TsFilePath+targetFolderName+"/", targetFolderName+".m3u8")
+		"-hls_base_url", alistHost+TsFilePath+targetFolderName+"/", "out.m3u8")
 	if err = cmd.Start(); err != nil {
 		return
 	}
@@ -35,4 +35,16 @@ func slice(sourceFile string, targetFolderName string) {
 	if err != nil {
 		return
 	}
+	// 数据拷贝
+	cmd = exec.Command("rclone", "copy", "out.ts", "webdav:"+TsFilePath+"/"+targetFolderName)
+	err = cmd.Run()
+	if err != nil {
+		return
+	}
+	cmd = exec.Command("rclone", "copy", "out.m3u8", "webdav:"+KeyPath+"/"+targetFolderName)
+	err = cmd.Run()
+	if err != nil {
+
+	}
+
 }
