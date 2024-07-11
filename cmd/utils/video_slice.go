@@ -94,7 +94,7 @@ func slice(alistHost string, tsFilePath string, keyPath string, sourceFile strin
 		return err
 	}
 
-	cmd = exec.Command("rclone", "-P", "copy", "out.m3u8", "webdav:"+tsFilePath+targetFolderName)
+	cmd = exec.Command("rclone", "-P", "copy", "out.m3u8", "webdav:"+keyPath+targetFolderName)
 	stdout, err = cmd.StdoutPipe()
 	cmd.Stderr = cmd.Stdout
 

@@ -34,7 +34,7 @@
 命令如下: 
 
 ```shell
-    nas-knife vl --alist https://pan.shiyitopo.tech:7334 \ 
+    nas-knife vl --alist http://ssssss \ 
     -t /aliyun/TS/ \ 
     -k /strm/av/ \
     -s /Downloads/SSIS-878.mp4 \ 
