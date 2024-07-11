@@ -8,7 +8,7 @@ var KeyPath = ""
 
 func slice(sourceFile string, targetFolderName string) {
 	// 先创建秘钥
-	cmd := exec.Command(" openssl rand 16 > ~/.nas-knife/video_slice/encipher.key")
+	cmd := exec.Command(" openssl rand 16 > /opt/nas-knife/video_slice/encipher.key")
 	err := cmd.Run()
 	if err != nil {
 		return
@@ -18,7 +18,7 @@ func slice(sourceFile string, targetFolderName string) {
 	// 16位字符串字符串
 	iv, _ := cmd.CombinedOutput()
 	// 将这些信息写入到key.keyinfo文件中，第一行为alist的key路径，第二行是秘钥路径，第三行是iv
-	cmd = exec.Command("echo", alistHost+KeyPath+targetFolderName+"/encipher.key", "~/.nas-knife/video_slice/encipher.key", string(iv), ">", "~/.nas-knife/video_slice/key.keyinfo")
+	cmd = exec.Command("echo", alistHost+KeyPath+targetFolderName+"/encipher.key", "~/.nas-knife/video_slice/encipher.key", string(iv), ">", "/opt/nas-knife/video_slice/key.keyinfo")
 	err = cmd.Run()
 	// 调用ffmpeg进行切片
 	//	ffmpeg -y -hwaccel videotoolbox -i ./SSIS-878.mp4 \
@@ -26,7 +26,7 @@ func slice(sourceFile string, targetFolderName string) {
 	//-f hls -hls_time 15 -hls_list_size 0 -hls_key_info_file ./key.keyinfo -hls_playlist_type vod -hls_flags single_file  -hls_base_url https://pan.shiyitopo.tech:7334/d/aliyun/TS/SSIS-878/ out.m3u8
 	cmd = exec.Command("ffmpeg", "-y", "-hwaccel", "videotoolbox", "-i", sourceFile,
 		"-vcodec", "copy", "-acodec", "copy",
-		"-f", "hls", "-hls_time", "15", "-hls_list_size", "0", "-hls_key_info_file", "./key.keyinfo", "-hls_playlist_type", "vod", "-hls_flags", "single_file",
+		"-f", "hls", "-hls_time", "15", "-hls_list_size", "0", "-hls_key_info_file", "/opt/nas-knife/video_slice/key.keyinfo", "-hls_playlist_type", "vod", "-hls_flags", "single_file",
 		"-hls_base_url", alistHost+TsFilePath+targetFolderName+"/", targetFolderName+".m3u8")
 	if err = cmd.Start(); err != nil {
 		return
