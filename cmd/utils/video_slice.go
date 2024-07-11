@@ -154,7 +154,7 @@ func slice(alistHost string, tsFilePath string, keyPath string, sourceFile strin
 		return err
 	}
 
-	if err = os.WriteFile("./movie.strm", []byte(alistHost+keyPath+targetFolderName+"/movie.strm"), 0666); err != nil {
+	if err = os.WriteFile("./movie.strm", []byte(alistHost+keyPath+targetFolderName+"/out.m3u8"), 0666); err != nil {
 		log.Fatal(err)
 	}
 	// 数据拷贝
