@@ -68,6 +68,13 @@ func slice(alistHost string, tsFilePath string, keyPath string, sourceFile strin
 		if err = os.WriteFile("./key.keyinfo", []byte(alistHost+keyPath+targetFolderName+"/encipher.key\n"+"./encipher.key\n"+string(iv)), 0666); err != nil {
 			log.Fatal(err)
 		}
+	} else {
+		// 替换掉key.keyinfo的第一行数据
+		cmd := exec.Command("sh", "-c", "sed -i '1c"+alistHost+keyPath+targetFolderName+"/encipher.key' ./key.keyinfo")
+		err := cmd.Run()
+		if err != nil {
+			return err
+		}
 	}
 
 	// 调用ffmpeg进行切片
@@ -75,6 +82,7 @@ func slice(alistHost string, tsFilePath string, keyPath string, sourceFile strin
 		"-vcodec", "copy", "-acodec", "copy",
 		"-f", "hls", "-hls_time", "15", "-hls_list_size", "0", "-hls_key_info_file", "./key.keyinfo", "-hls_playlist_type", "vod", "-hls_flags", "single_file",
 		"-hls_base_url", alistHost+tsFilePath+targetFolderName+"/", "out.m3u8")
+	fmt.Print(cmd.String())
 	// 命令的错误输出和标准输出都连接到同一个管道
 	stdout, err := cmd.StdoutPipe()
 	cmd.Stderr = cmd.Stdout
