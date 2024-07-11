@@ -52,22 +52,26 @@ func slice(alistHost string, tsFilePath string, keyPath string, sourceFile strin
 	if keyPath == "" {
 		keyPath = tsFilePath
 	}
-	// 先创建秘钥
-	cmd := exec.Command("sh", "-c", "openssl rand 16 > ./encipher.key")
-	err := cmd.Run()
-	if err != nil {
-		return err
+	exists, _ := PathExists("./key.keyinfo")
+	if !exists {
+		// 先创建秘钥
+		cmd := exec.Command("sh", "-c", "openssl rand 16 > ./encipher.key")
+		err := cmd.Run()
+		if err != nil {
+			return err
+		}
+		// 获取16位随机字符串
+		cmd = exec.Command("sh", "-c", "openssl rand -hex 16")
+		// 16位字符串字符串
+		iv, _ := cmd.CombinedOutput()
+		// 将这些信息写入到key.keyinfo文件中，第一行为alist的key路径，第二行是秘钥路径，第三行是iv
+		if err = os.WriteFile("./key.keyinfo", []byte(alistHost+keyPath+targetFolderName+"/encipher.key\n"+"./encipher.key\n"+string(iv)), 0666); err != nil {
+			log.Fatal(err)
+		}
 	}
-	// 获取16位随机字符串
-	cmd = exec.Command("sh", "-c", "openssl rand -hex 16")
-	// 16位字符串字符串
-	iv, _ := cmd.CombinedOutput()
-	// 将这些信息写入到key.keyinfo文件中，第一行为alist的key路径，第二行是秘钥路径，第三行是iv
-	if err = os.WriteFile("./key.keyinfo", []byte(alistHost+keyPath+targetFolderName+"/encipher.key\n"+"./encipher.key\n"+string(iv)), 0666); err != nil {
-		log.Fatal(err)
-	}
+
 	// 调用ffmpeg进行切片
-	cmd = exec.Command("ffmpeg", "-y", "-hwaccel", "videotoolbox", "-i", sourceFile,
+	cmd := exec.Command("ffmpeg", "-y", "-hwaccel", "videotoolbox", "-i", sourceFile,
 		"-vcodec", "copy", "-acodec", "copy",
 		"-f", "hls", "-hls_time", "15", "-hls_list_size", "0", "-hls_key_info_file", "./key.keyinfo", "-hls_playlist_type", "vod", "-hls_flags", "single_file",
 		"-hls_base_url", alistHost+tsFilePath+targetFolderName+"/", "out.m3u8")
@@ -164,4 +168,15 @@ func slice(alistHost string, tsFilePath string, keyPath string, sourceFile strin
 	}
 	return nil
 
+}
+
+func PathExists(path string) (bool, error) {
+	_, err := os.Stat(path)
+	if err == nil {
+		return true, nil
+	}
+	if os.IsNotExist(err) {
+		return false, nil
+	}
+	return false, err
 }
