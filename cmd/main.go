@@ -85,6 +85,8 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					return zerotier.InitialModel(), nil
 				case "Docker":
 					return docker.InitialModel(), nil
+				case "视频切片":
+					return docker.InitialModel()
 
 				}
 			}
