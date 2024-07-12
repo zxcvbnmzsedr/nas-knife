@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"github.com/spf13/cobra"
 	"log"
+	"nas-knif/utils/alist"
 	"os"
 	"os/exec"
 	"path"
@@ -45,7 +46,7 @@ func NewVideoSlice() *cobra.Command {
 				_, fileName := filepath.Split(opts.SourceFile)
 				opts.TargetFolderName = strings.TrimSuffix(fileName, path.Ext(fileName))
 			}
-			return slice(opts.AlistHost, opts.TsFilePath, opts.KeyPath, opts.SourceFile, opts.TargetFolderName)
+			return slice(opts.AlistHost, opts.AuthKey, opts.TsFilePath, opts.KeyPath, opts.SourceFile, opts.TargetFolderName)
 		},
 	}
 	cmd.Flags().StringVar(&opts.AlistHost, "alist", "alist", "alist路径")
@@ -56,41 +57,32 @@ func NewVideoSlice() *cobra.Command {
 	cmd.Flags().StringVarP(&opts.AuthKey, "auth", "a", "", "Alist令牌")
 	return cmd
 }
-func slice(alistHost string, tsFilePath string, keyPath string, sourceFile string, targetFolderName string) error {
+func slice(alistHost string, alistToken string, tsFilePath string, keyPath string, sourceFile string, targetFolderName string) error {
 	if keyPath == "" {
 		keyPath = tsFilePath
 	}
-	exists, _ := PathExists("./key.keyinfo")
-	if !exists {
-		// 先创建秘钥
-		cmd := exec.Command("sh", "-c", "openssl rand 16 > ./encipher.key")
-		err := cmd.Run()
-		if err != nil {
-			return err
-		}
-		// 获取16位随机字符串
-		cmd = exec.Command("sh", "-c", "openssl rand -hex 16")
-		// 16位字符串字符串
-		iv, _ := cmd.CombinedOutput()
-		// 将这些信息写入到key.keyinfo文件中，第一行为alist的key路径，第二行是秘钥路径，第三行是iv
-		if err = os.WriteFile("./key.keyinfo", []byte(alistHost+keyPath+targetFolderName+"/encipher.key\n"+"./encipher.key\n"+string(iv)), 0666); err != nil {
-			log.Fatal(err)
-		}
-	} else {
-		// 替换掉key.keyinfo的第一行数据
-		cmd := exec.Command("sh", "-c", "sed -i '1c"+alistHost+keyPath+targetFolderName+"/encipher.key' ./key.keyinfo")
-		err := cmd.Run()
-		if err != nil {
-			return err
-		}
+
+	// 先创建秘钥
+	cmd := exec.Command("sh", "-c", "openssl rand 16 > ./encipher.key")
+	err := cmd.Run()
+	if err != nil {
+		return err
+	}
+	// 获取16位随机字符串
+	cmd = exec.Command("sh", "-c", "openssl rand -hex 16")
+	// 16位字符串字符串
+	iv, _ := cmd.CombinedOutput()
+	// 将这些信息写入到key.keyinfo文件中，第一行为alist的key路径，第二行是秘钥路径，第三行是iv
+	if err = os.WriteFile("./key.keyinfo", []byte(alistHost+keyPath+targetFolderName+"/encipher.key\n"+"./encipher.key\n"+string(iv)), 0666); err != nil {
+		log.Fatal(err)
 	}
 
 	// 调用ffmpeg进行切片
-	cmd := exec.Command("ffmpeg", "-y", "-hwaccel", "videotoolbox", "-i", sourceFile,
+	cmd = exec.Command("ffmpeg", "-y", "-hwaccel", "videotoolbox", "-i", sourceFile,
 		"-vcodec", "copy", "-acodec", "copy",
 		"-f", "hls", "-hls_time", "15", "-hls_list_size", "0", "-hls_key_info_file", "./key.keyinfo", "-hls_playlist_type", "vod", "-hls_flags", "single_file",
 		"-hls_base_url", alistHost+tsFilePath+targetFolderName+"/", "out.m3u8")
-	err := ExecCmd(cmd)
+	err = ExecCmd(cmd)
 	if err != nil {
 		return err
 	}
@@ -106,7 +98,8 @@ func slice(alistHost string, tsFilePath string, keyPath string, sourceFile strin
 		return err
 	}
 
-	if err = os.WriteFile("./movie.strm", []byte(alistHost+keyPath+targetFolderName+"/out.m3u8"), 0666); err != nil {
+	sign, err := alist.GetFileDetail(alistHost, alistToken, keyPath+targetFolderName+"/out.m3u8")
+	if err = os.WriteFile("./movie.strm", []byte(alistHost+keyPath+targetFolderName+"/out.m3u8?sign="+sign.Data.Sign), 0666); err != nil {
 		log.Fatal(err)
 	}
 	// 数据拷贝
