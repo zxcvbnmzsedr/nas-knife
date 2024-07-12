@@ -87,6 +87,7 @@ func slice(alistHost string, alistToken string, tsFilePath string, keyPath strin
 		return err
 	}
 
+	// todo 使用rclone上传全部都改成alist进行上传
 	cmd = exec.Command("rclone", "-P", "copy", "out.m3u8", "webdav:"+keyPath+targetFolderName)
 	err = ExecCmd(cmd)
 	if err != nil {
@@ -117,15 +118,4 @@ func slice(alistHost string, alistToken string, tsFilePath string, keyPath strin
 	}
 	return nil
 
-}
-
-func PathExists(path string) (bool, error) {
-	_, err := os.Stat(path)
-	if err == nil {
-		return true, nil
-	}
-	if os.IsNotExist(err) {
-		return false, nil
-	}
-	return false, err
 }
