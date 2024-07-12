@@ -1,24 +1,11 @@
 package docker
 
 import (
-	"fmt"
 	tea "github.com/charmbracelet/bubbletea"
-	"log"
 	"os"
 	"os/exec"
 	"strings"
 )
-
-func init() {
-	logFile, err := os.OpenFile("./xx.log", os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0644)
-	if err != nil {
-		fmt.Println("open log file failed, err:", err)
-		return
-	}
-	log.SetOutput(logFile)
-	log.SetPrefix("[NAS_KNIFE]")
-	log.SetFlags(log.Lshortfile | log.Lmicroseconds | log.Ldate)
-}
 
 type Model struct {
 	// 是否安装
