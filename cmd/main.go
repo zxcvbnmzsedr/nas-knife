@@ -10,7 +10,7 @@ import (
 	"io"
 	"nas-knif/cmd/docker"
 	"nas-knif/cmd/ssh_server"
-	"nas-knif/cmd/utils"
+	"nas-knif/cmd/tools"
 	"nas-knif/cmd/zerotier"
 	"os"
 	"os/signal"
@@ -114,7 +114,7 @@ func main() {
 		ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt)
 		defer cancel()
 
-		if err := utils.New().ExecuteContext(ctx); err != nil {
+		if err := tools.New().ExecuteContext(ctx); err != nil {
 			color.Red("Error: %+v", err)
 			os.Exit(1)
 		}

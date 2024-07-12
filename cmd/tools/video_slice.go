@@ -1,4 +1,4 @@
-package utils
+package tools
 
 import (
 	"fmt"
@@ -17,6 +17,7 @@ type Options struct {
 	KeyPath          string
 	SourceFile       string
 	TargetFolderName string
+	AuthKey          string
 }
 
 func NewVideoSlice() *cobra.Command {
@@ -37,6 +38,9 @@ func NewVideoSlice() *cobra.Command {
 			if len(opts.SourceFile) == 0 {
 				return fmt.Errorf("SourceFile别空啊，要切片的视频文件")
 			}
+			if len(opts.AuthKey) == 0 {
+				return fmt.Errorf("AuthKey别空啊，我要提取签名文件")
+			}
 			if len(opts.TargetFolderName) == 0 {
 				_, fileName := filepath.Split(opts.SourceFile)
 				opts.TargetFolderName = strings.TrimSuffix(fileName, path.Ext(fileName))
@@ -49,6 +53,7 @@ func NewVideoSlice() *cobra.Command {
 	cmd.Flags().StringVarP(&opts.KeyPath, "keyPath", "k", "", "目标Key存储路径")
 	cmd.Flags().StringVarP(&opts.SourceFile, "source", "s", "", "源文件")
 	cmd.Flags().StringVarP(&opts.TargetFolderName, "folder", "f", "", "目录名")
+	cmd.Flags().StringVarP(&opts.AuthKey, "auth", "a", "", "Alist令牌")
 	return cmd
 }
 func slice(alistHost string, tsFilePath string, keyPath string, sourceFile string, targetFolderName string) error {
@@ -85,72 +90,19 @@ func slice(alistHost string, tsFilePath string, keyPath string, sourceFile strin
 		"-vcodec", "copy", "-acodec", "copy",
 		"-f", "hls", "-hls_time", "15", "-hls_list_size", "0", "-hls_key_info_file", "./key.keyinfo", "-hls_playlist_type", "vod", "-hls_flags", "single_file",
 		"-hls_base_url", alistHost+tsFilePath+targetFolderName+"/", "out.m3u8")
-	fmt.Print(cmd.String())
-	// 命令的错误输出和标准输出都连接到同一个管道
-	stdout, err := cmd.StdoutPipe()
-	cmd.Stderr = cmd.Stdout
-
+	err := ExecCmd(cmd)
 	if err != nil {
-		return err
-	}
-	if err = cmd.Start(); err != nil {
-		return err
-	}
-	// 从管道中实时获取输出并打印到终端
-	for {
-		tmp := make([]byte, 1024)
-		_, err := stdout.Read(tmp)
-		fmt.Print(string(tmp))
-		if err != nil {
-			break
-		}
-	}
-	if err = cmd.Wait(); err != nil {
 		return err
 	}
 
 	cmd = exec.Command("rclone", "-P", "copy", "out.m3u8", "webdav:"+keyPath+targetFolderName)
-	stdout, err = cmd.StdoutPipe()
-	cmd.Stderr = cmd.Stdout
-
+	err = ExecCmd(cmd)
 	if err != nil {
-		return err
-	}
-	if err = cmd.Start(); err != nil {
-		return err
-	}
-	// 从管道中实时获取输出并打印到终端
-	for {
-		tmp := make([]byte, 1024)
-		_, err := stdout.Read(tmp)
-		fmt.Print(string(tmp))
-		if err != nil {
-			break
-		}
-	}
-	if err = cmd.Wait(); err != nil {
 		return err
 	}
 	cmd = exec.Command("rclone", "-P", "copy", "./encipher.key", "webdav:"+keyPath+targetFolderName)
-	stdout, err = cmd.StdoutPipe()
-	cmd.Stderr = cmd.Stdout
-
+	err = ExecCmd(cmd)
 	if err != nil {
-		return err
-	}
-	if err = cmd.Start(); err != nil {
-		return err
-	}
-	// 从管道中实时获取输出并打印到终端
-	for {
-		tmp := make([]byte, 1024)
-		_, err := stdout.Read(tmp)
-		fmt.Print(string(tmp))
-		if err != nil {
-			break
-		}
-	}
-	if err = cmd.Wait(); err != nil {
 		return err
 	}
 
@@ -159,49 +111,15 @@ func slice(alistHost string, tsFilePath string, keyPath string, sourceFile strin
 	}
 	// 数据拷贝
 	cmd = exec.Command("rclone", "-P", "copy", "movie.strm", "webdav:"+keyPath+targetFolderName)
-	stdout, err = cmd.StdoutPipe()
-	cmd.Stderr = cmd.Stdout
-
+	err = ExecCmd(cmd)
 	if err != nil {
-		return err
-	}
-	if err = cmd.Start(); err != nil {
-		return err
-	}
-	// 从管道中实时获取输出并打印到终端
-	for {
-		tmp := make([]byte, 1024)
-		_, err := stdout.Read(tmp)
-		fmt.Print(string(tmp))
-		if err != nil {
-			break
-		}
-	}
-	if err = cmd.Wait(); err != nil {
 		return err
 	}
 
 	// 数据拷贝
 	cmd = exec.Command("rclone", "-P", "copy", "out.ts", "webdav:"+tsFilePath+targetFolderName)
-	stdout, err = cmd.StdoutPipe()
-	cmd.Stderr = cmd.Stdout
-
+	err = ExecCmd(cmd)
 	if err != nil {
-		return err
-	}
-	if err = cmd.Start(); err != nil {
-		return err
-	}
-	// 从管道中实时获取输出并打印到终端
-	for {
-		tmp := make([]byte, 1024)
-		_, err := stdout.Read(tmp)
-		fmt.Print(string(tmp))
-		if err != nil {
-			break
-		}
-	}
-	if err = cmd.Wait(); err != nil {
 		return err
 	}
 	return nil
