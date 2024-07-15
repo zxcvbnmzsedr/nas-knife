@@ -108,6 +108,7 @@ func slice(alistHost string, alistToken string, tsFilePath string, keyPath strin
 	switch listType {
 	case m3u8.MEDIA:
 		mediapl := p.(*m3u8.MediaPlaylist)
+		// 替换生成的视频文件地址为实际地址
 		for i := range mediapl.Segments {
 			if mediapl.Segments[i] != nil {
 				mediapl.Segments[i].URI = mediapl.Segments[i].URI + "?sign=" + tsFile.Data.Sign
@@ -117,6 +118,8 @@ func slice(alistHost string, alistToken string, tsFilePath string, keyPath strin
 		if err != nil {
 			return err
 		}
+
+		// 生成strm文件，并上传
 		if err = os.WriteFile("./movie.strm", []byte(alistHost+keyPath+targetFolderName+"/out.m3u8?sign="+m3u8File.Data.Sign), 0666); err != nil {
 			log.Fatal(err)
 		}
