@@ -89,7 +89,7 @@ func slice(alistHost string, alistToken string, tsFilePath string, keyPath strin
 	fmt.Println("生成KeyInfo成功")
 	//加密
 	dst, _ := openssl.AesECBEncrypt([]byte(targetFolderName), iv, openssl.PKCS7_PADDING)
-	encipherTargetFolderName := base64.StdEncoding.EncodeToString(dst)
+	encipherTargetFolderName := base64.URLEncoding.EncodeToString(dst)
 
 	// 调用ffmpeg进行切片
 	cmd = exec.Command("ffmpeg", "-y", "-hwaccel", "videotoolbox", "-i", sourceFile,
@@ -102,13 +102,13 @@ func slice(alistHost string, alistToken string, tsFilePath string, keyPath strin
 		return err
 	}
 	// 生成封面图
-	cmd = exec.Command("ffmpeg", "-i", sourceFile, "-y", "-f", "image2", "-frames", "1", "poster.jpg")
+	cmd = exec.Command("ffmpeg", "-i", sourceFile, "-y", "-f", "image2", "-frames:", "1", "poster.jpg")
 	err = ExecCmd(cmd)
 	if err != nil {
 		return err
 	}
 
-	posterFileByte, _ := os.ReadFile("out.ts")
+	posterFileByte, _ := os.ReadFile("poster.jpg")
 	_, err = alist.PutFile(alistHost, alistToken, keyPath+targetFolderName+"/poster.jpg", posterFileByte)
 
 	// 上传ts文件
@@ -153,6 +153,7 @@ func slice(alistHost string, alistToken string, tsFilePath string, keyPath strin
 	_ = os.Remove("out.m3u8")
 	_ = os.Remove("key.keyinfo")
 	_ = os.Remove("movie.strm")
+	_ = os.Remove("poster.jpg")
 	return nil
 
 }
