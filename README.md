@@ -22,10 +22,9 @@
 
 ### 小片片切割器
 
-使用FFMpeg对小片片进行切割，切成一段段的HLS文件, 合并成同一个数据文件，然后借助rclone上传到Alist中。
+使用FFMpeg对小片片进行切割，切成一段段的HLS文件, 合并成同一个数据文件，然后上传到Alist中。
 
 期间会生成：
-
 1. out.m3u8 流文件
 2. key.keyinfo 秘钥描述
 3. encipher.key 秘钥
@@ -35,13 +34,13 @@
 要求:
 
 1. 安装ffmpeg
-2. 安装rclone并且配置好名称是webdav
-3. 安装openssl，用于生成秘钥
+2. 安装openssl，用于生成秘钥
 
 命令如下:
 
 ```shell
-    nas-knife vl --alist http://ssssss/d \ 
+    nas-knife vl --alist http://ssssss \
+    -- auth 'XXXXXXXXXXXXXXXX' \ 
     -t /aliyun/TS/ \ 
     -k /strm/av/ \
     -s /Downloads/SSIS-878.mp4 \ 
@@ -50,7 +49,8 @@
 
 参数说明：
 
-+ alist: 指定Host地址用于替换m3u8里面的文件为真实地址, 得是/d结尾的代理地址，暂不支持开启签名使用
++ alist: 指定Host地址用于替换m3u8里面的文件为真实地址
++ auth: Alist的秘钥，会通过这个秘钥拿到上传的签名地址
 + t: 目标网盘的地址，比如阿里云盘，文件秘钥分开 天王老子来也不知道文件里是啥
 + k: 本地盘的地址（为空则目标网盘的地址）
 + s: 本地视频文件地址

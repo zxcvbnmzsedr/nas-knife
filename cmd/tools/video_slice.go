@@ -1,9 +1,12 @@
 package tools
 
 import (
+	"bytes"
 	"fmt"
+	"github.com/grafov/m3u8"
 	"github.com/spf13/cobra"
 	"log"
+	"nas-knif/utils/alist"
 	"os"
 	"os/exec"
 	"path"
@@ -45,7 +48,7 @@ func NewVideoSlice() *cobra.Command {
 				_, fileName := filepath.Split(opts.SourceFile)
 				opts.TargetFolderName = strings.TrimSuffix(fileName, path.Ext(fileName))
 			}
-			return slice(opts.AlistHost, opts.TsFilePath, opts.KeyPath, opts.SourceFile, opts.TargetFolderName)
+			return slice(opts.AlistHost, opts.AuthKey, opts.TsFilePath, opts.KeyPath, opts.SourceFile, opts.TargetFolderName)
 		},
 	}
 	cmd.Flags().StringVar(&opts.AlistHost, "alist", "alist", "alist路径")
@@ -56,83 +59,79 @@ func NewVideoSlice() *cobra.Command {
 	cmd.Flags().StringVarP(&opts.AuthKey, "auth", "a", "", "Alist令牌")
 	return cmd
 }
-func slice(alistHost string, tsFilePath string, keyPath string, sourceFile string, targetFolderName string) error {
+func slice(alistHost string, alistToken string, tsFilePath string, keyPath string, sourceFile string, targetFolderName string) error {
 	if keyPath == "" {
 		keyPath = tsFilePath
 	}
-	exists, _ := PathExists("./key.keyinfo")
-	if !exists {
-		// 先创建秘钥
-		cmd := exec.Command("sh", "-c", "openssl rand 16 > ./encipher.key")
-		err := cmd.Run()
-		if err != nil {
-			return err
-		}
-		// 获取16位随机字符串
-		cmd = exec.Command("sh", "-c", "openssl rand -hex 16")
-		// 16位字符串字符串
-		iv, _ := cmd.CombinedOutput()
-		// 将这些信息写入到key.keyinfo文件中，第一行为alist的key路径，第二行是秘钥路径，第三行是iv
-		if err = os.WriteFile("./key.keyinfo", []byte(alistHost+keyPath+targetFolderName+"/encipher.key\n"+"./encipher.key\n"+string(iv)), 0666); err != nil {
-			log.Fatal(err)
-		}
-	} else {
-		// 替换掉key.keyinfo的第一行数据
-		cmd := exec.Command("sh", "-c", "sed -i '1c"+alistHost+keyPath+targetFolderName+"/encipher.key' ./key.keyinfo")
-		err := cmd.Run()
-		if err != nil {
-			return err
-		}
-	}
 
-	// 调用ffmpeg进行切片
-	cmd := exec.Command("ffmpeg", "-y", "-hwaccel", "videotoolbox", "-i", sourceFile,
-		"-vcodec", "copy", "-acodec", "copy",
-		"-f", "hls", "-hls_time", "15", "-hls_list_size", "0", "-hls_key_info_file", "./key.keyinfo", "-hls_playlist_type", "vod", "-hls_flags", "single_file",
-		"-hls_base_url", alistHost+tsFilePath+targetFolderName+"/", "out.m3u8")
-	err := ExecCmd(cmd)
+	// 先创建秘钥
+	cmd := exec.Command("sh", "-c", "openssl rand 16 > ./encipher.key")
+	err := cmd.Run()
 	if err != nil {
 		return err
 	}
+	fmt.Println("生成秘钥成功")
 
-	cmd = exec.Command("rclone", "-P", "copy", "out.m3u8", "webdav:"+keyPath+targetFolderName)
-	err = ExecCmd(cmd)
-	if err != nil {
-		return err
-	}
-	cmd = exec.Command("rclone", "-P", "copy", "./encipher.key", "webdav:"+keyPath+targetFolderName)
-	err = ExecCmd(cmd)
-	if err != nil {
-		return err
-	}
+	// 获取16位随机字符串
+	cmd = exec.Command("sh", "-c", "openssl rand -hex 16")
+	// 16位字符串字符串
+	iv, _ := cmd.CombinedOutput()
 
-	if err = os.WriteFile("./movie.strm", []byte(alistHost+keyPath+targetFolderName+"/out.m3u8"), 0666); err != nil {
+	encipherFileByte, _ := os.ReadFile("encipher.key")
+	encipherFile, err := alist.PutFile(alistHost, alistToken, keyPath+targetFolderName+"/encipher.key", encipherFileByte)
+
+	// 将这些信息写入到key.keyinfo文件中，第一行为alist的key路径，第二行是秘钥路径，第三行是iv
+	if err = os.WriteFile("./key.keyinfo", []byte(alistHost+"/d"+keyPath+targetFolderName+"/encipher.key?sign="+encipherFile.Data.Sign+"\n"+"./encipher.key\n"+string(iv)), 0666); err != nil {
 		log.Fatal(err)
 	}
-	// 数据拷贝
-	cmd = exec.Command("rclone", "-P", "copy", "movie.strm", "webdav:"+keyPath+targetFolderName)
+	fmt.Println("生成KeyInfo成功")
+
+	// 调用ffmpeg进行切片
+	cmd = exec.Command("ffmpeg", "-y", "-hwaccel", "videotoolbox", "-i", sourceFile,
+		"-vcodec", "copy", "-acodec", "copy",
+		"-f", "hls", "-hls_time", "15", "-hls_list_size", "0", "-hls_key_info_file", "./key.keyinfo", "-hls_playlist_type", "vod", "-hls_flags", "single_file",
+		"-hls_base_url", alistHost+"/d"+tsFilePath+targetFolderName+"/", "out.m3u8")
 	err = ExecCmd(cmd)
 	if err != nil {
 		return err
 	}
 
-	// 数据拷贝
-	cmd = exec.Command("rclone", "-P", "copy", "out.ts", "webdav:"+tsFilePath+targetFolderName)
-	err = ExecCmd(cmd)
+	// 上传ts文件
+	tsFileByte, _ := os.ReadFile("out.ts")
+	tsFile, err := alist.PutFile(alistHost, alistToken, tsFilePath+targetFolderName+"/out.ts", tsFileByte)
 	if err != nil {
 		return err
 	}
+
+	m3u8FileByte, _ := os.ReadFile("out.m3u8")
+	p, listType, _ := m3u8.DecodeFrom(bytes.NewReader(m3u8FileByte), true)
+	switch listType {
+	case m3u8.MEDIA:
+		mediapl := p.(*m3u8.MediaPlaylist)
+		// 替换生成的视频文件地址为实际地址
+		for i := range mediapl.Segments {
+			if mediapl.Segments[i] != nil {
+				mediapl.Segments[i].URI = mediapl.Segments[i].URI + "?sign=" + tsFile.Data.Sign
+			}
+		}
+		m3u8File, err := alist.PutFile(alistHost, alistToken, keyPath+targetFolderName+"/out.m3u8", mediapl.Encode().Bytes())
+		if err != nil {
+			return err
+		}
+
+		// 生成strm文件，并上传
+		if err = os.WriteFile("./movie.strm", []byte(alistHost+keyPath+targetFolderName+"/out.m3u8?sign="+m3u8File.Data.Sign), 0666); err != nil {
+			log.Fatal(err)
+		}
+		movieStrmFile, _ := os.ReadFile("movie.strm")
+		_, err = alist.PutFile(alistHost, alistToken, keyPath+targetFolderName+"/movie.strm", movieStrmFile)
+		if err != nil {
+			return err
+		}
+	default:
+		panic("unhandled default case")
+	}
+
 	return nil
 
-}
-
-func PathExists(path string) (bool, error) {
-	_, err := os.Stat(path)
-	if err == nil {
-		return true, nil
-	}
-	if os.IsNotExist(err) {
-		return false, nil
-	}
-	return false, err
 }
