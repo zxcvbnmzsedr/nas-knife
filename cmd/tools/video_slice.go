@@ -143,6 +143,7 @@ func slice(alistHost string, alistToken string, tsFilePath string, keyPath strin
 	_ = os.Remove("out.ts")
 	_ = os.Remove("out.m3u8")
 	_ = os.Remove("key.keyinfo")
+	_ = os.Remove("movie.strm")
 	return nil
 
 }
