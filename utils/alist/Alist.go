@@ -4,8 +4,11 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"github.com/cheggaaa/pb/v3"
 	"io"
 	"net/http"
+	"os"
+	"time"
 )
 
 type GetFileDetailReq struct {
@@ -59,7 +62,13 @@ func PutFile(host string, token string, path string, file []byte) (GetFileDetail
 	url := host + "/api/fs/put"
 
 	client := &http.Client{}
-	req, err := http.NewRequest("PUT", url, bytes.NewReader(file))
+	reader := bytes.NewReader(file)
+
+	// create bar
+	bar := pb.New(reader.Len()).SetRefreshRate(time.Second).SetWriter(os.Stdout).Set(pb.Bytes, true).Set(pb.SIBytesPrefix, true).Start()
+	r := bar.NewProxyReader(reader)
+
+	req, err := http.NewRequest("PUT", url, r)
 
 	if err != nil {
 		return GetFileDetailResp{}, err
@@ -68,7 +77,6 @@ func PutFile(host string, token string, path string, file []byte) (GetFileDetail
 	req.Header.Add("File-Path", path)
 	req.Header.Add("User-Agent", "NasKnife/1.0.0")
 	req.Header.Add("As-Task", "false")
-	req.Header.Add("Content-Length", "")
 	req.Header.Add("Content-Type", "text/plain")
 
 	res, err := client.Do(req)
@@ -77,6 +85,7 @@ func PutFile(host string, token string, path string, file []byte) (GetFileDetail
 		return GetFileDetailResp{}, err
 	}
 	defer res.Body.Close()
+	bar.Finish()
 
 	_, err = io.ReadAll(res.Body)
 	if err != nil {
@@ -84,4 +93,15 @@ func PutFile(host string, token string, path string, file []byte) (GetFileDetail
 		return GetFileDetailResp{}, err
 	}
 	return GetFileDetail(host, token, path)
+}
+
+type ProgressReader struct {
+	io.Reader
+	Reporter func(r int64)
+}
+
+func (pr *ProgressReader) Read(p []byte) (n int, err error) {
+	n, err = pr.Reader.Read(p)
+	pr.Reporter(int64(n))
+	return
 }
