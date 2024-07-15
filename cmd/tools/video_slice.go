@@ -135,7 +135,7 @@ func slice(alistHost string, alistToken string, tsFilePath string, keyPath strin
 		}
 
 		// 生成strm文件，并上传
-		if err = os.WriteFile("./movie.strm", []byte(alistHost+keyPath+targetFolderName+"/out.m3u8?sign="+m3u8File.Data.Sign), 0666); err != nil {
+		if err = os.WriteFile("./movie.strm", []byte(alistHost+"/d"+keyPath+targetFolderName+"/out.m3u8?sign="+m3u8File.Data.Sign), 0666); err != nil {
 			log.Fatal(err)
 		}
 		movieStrmFile, _ := os.ReadFile("movie.strm")
