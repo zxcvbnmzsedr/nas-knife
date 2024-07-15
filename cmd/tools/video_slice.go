@@ -2,7 +2,9 @@ package tools
 
 import (
 	"bytes"
+	"encoding/base64"
 	"fmt"
+	"github.com/forgoer/openssl"
 	"github.com/grafov/m3u8"
 	"github.com/spf13/cobra"
 	"log"
@@ -85,12 +87,16 @@ func slice(alistHost string, alistToken string, tsFilePath string, keyPath strin
 		log.Fatal(err)
 	}
 	fmt.Println("生成KeyInfo成功")
+	//加密
+	dst, _ := openssl.AesECBEncrypt([]byte(targetFolderName), iv, openssl.PKCS7_PADDING)
+	encipherTargetFolderName := base64.StdEncoding.EncodeToString(dst)
 
 	// 调用ffmpeg进行切片
 	cmd = exec.Command("ffmpeg", "-y", "-hwaccel", "videotoolbox", "-i", sourceFile,
 		"-vcodec", "copy", "-acodec", "copy",
 		"-f", "hls", "-hls_time", "15", "-hls_list_size", "0", "-hls_key_info_file", "./key.keyinfo", "-hls_playlist_type", "vod", "-hls_flags", "single_file",
-		"-hls_base_url", alistHost+"/d"+tsFilePath+targetFolderName+"/", "out.m3u8")
+		"-hls_base_url", alistHost+"/d"+tsFilePath+"/",
+		"out.m3u8")
 	err = ExecCmd(cmd)
 	if err != nil {
 		return err
@@ -98,7 +104,7 @@ func slice(alistHost string, alistToken string, tsFilePath string, keyPath strin
 
 	// 上传ts文件
 	tsFileByte, _ := os.ReadFile("out.ts")
-	tsFile, err := alist.PutFile(alistHost, alistToken, tsFilePath+targetFolderName+"/out.ts", tsFileByte)
+	tsFile, err := alist.PutFile(alistHost, alistToken, tsFilePath+encipherTargetFolderName+".ts", tsFileByte)
 	if err != nil {
 		return err
 	}
@@ -111,7 +117,7 @@ func slice(alistHost string, alistToken string, tsFilePath string, keyPath strin
 		// 替换生成的视频文件地址为实际地址
 		for i := range mediapl.Segments {
 			if mediapl.Segments[i] != nil {
-				mediapl.Segments[i].URI = mediapl.Segments[i].URI + "?sign=" + tsFile.Data.Sign
+				mediapl.Segments[i].URI = strings.Replace(mediapl.Segments[i].URI, "out.ts", encipherTargetFolderName+".ts", -1) + "?sign=" + tsFile.Data.Sign
 			}
 		}
 		m3u8File, err := alist.PutFile(alistHost, alistToken, keyPath+targetFolderName+"/out.m3u8", mediapl.Encode().Bytes())
