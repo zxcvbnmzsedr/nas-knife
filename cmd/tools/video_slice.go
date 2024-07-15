@@ -138,6 +138,11 @@ func slice(alistHost string, alistToken string, tsFilePath string, keyPath strin
 		panic("unhandled default case")
 	}
 
+	// 清理文件
+	_ = os.Remove("encipher.key")
+	_ = os.Remove("out.ts")
+	_ = os.Remove("out.m3u8")
+	_ = os.Remove("key.keyinfo")
 	return nil
 
 }
