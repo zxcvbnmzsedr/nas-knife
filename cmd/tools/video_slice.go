@@ -101,6 +101,15 @@ func slice(alistHost string, alistToken string, tsFilePath string, keyPath strin
 	if err != nil {
 		return err
 	}
+	// 生成封面图
+	cmd = exec.Command("ffmpeg", "-i", sourceFile, "-y", "-f", "image2", "-frames", "1", "poster.jpg")
+	err = ExecCmd(cmd)
+	if err != nil {
+		return err
+	}
+
+	posterFileByte, _ := os.ReadFile("out.ts")
+	_, err = alist.PutFile(alistHost, alistToken, keyPath+targetFolderName+"/poster.jpg", posterFileByte)
 
 	// 上传ts文件
 	tsFileByte, _ := os.ReadFile("out.ts")
