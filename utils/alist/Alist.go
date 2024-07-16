@@ -8,6 +8,7 @@ import (
 	"io"
 	"net/http"
 	"os"
+	"path/filepath"
 	"time"
 )
 
@@ -126,7 +127,7 @@ func PutFile(host string, token string, path string, file []byte) (GetFileDetail
 		}
 		time.Sleep(time.Millisecond)
 	}
-
+	refresh(host, token, path)
 	return GetFileDetail(host, token, path)
 }
 
@@ -158,4 +159,15 @@ func GetTaskProcess(host string, token string, taskId string) TaskInfoResp {
 	err = json.Unmarshal(body, &resp)
 
 	return resp
+}
+
+func refresh(host string, token string, path string) {
+	url := host + "/api/fs/get"
+	dir, _ := filepath.Split(path)
+	a := `{"path":"` + dir + `,"password":"","page":1,"per_page":0,"refresh":true}`
+	client := &http.Client{}
+	req, _ := http.NewRequest("POST", url, bytes.NewReader([]byte(a)))
+	req.Header.Add("Authorization", token)
+	req.Header.Add("User-Agent", "NasKnife/1.0.0")
+	_, _ = client.Do(req)
 }
