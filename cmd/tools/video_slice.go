@@ -113,7 +113,10 @@ func slice(alistHost string, alistToken string, tsFilePath string, keyPath strin
 	}
 
 	// 上传ts文件
-	tsFileByte, _ := os.ReadFile("out.ts")
+	tsFileByte, err := os.ReadFile("out.ts")
+	if err != nil {
+		return err
+	}
 	tsFile, err := alist.PutFile(alistHost, alistToken, tsFilePath+encipherTargetFolderName+".ts", tsFileByte)
 	if err != nil {
 		return err

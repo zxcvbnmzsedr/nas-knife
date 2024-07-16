@@ -83,6 +83,7 @@ func GetFileDetail(host string, token string, path string) (GetFileDetailResp, e
 }
 
 func PutFile(host string, token string, path string, file []byte) (GetFileDetailResp, error) {
+	fmt.Println("上传文件", path)
 	url := host + "/api/fs/put"
 
 	client := &http.Client{}
