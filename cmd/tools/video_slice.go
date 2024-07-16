@@ -2,9 +2,8 @@ package tools
 
 import (
 	"bytes"
-	"encoding/base64"
+	"crypto/md5"
 	"fmt"
-	"github.com/forgoer/openssl"
 	"github.com/grafov/m3u8"
 	"github.com/spf13/cobra"
 	"log"
@@ -87,9 +86,8 @@ func slice(alistHost string, alistToken string, tsFilePath string, keyPath strin
 		log.Fatal(err)
 	}
 	fmt.Println("生成KeyInfo成功")
-	//加密
-	dst, _ := openssl.AesECBEncrypt([]byte(targetFolderName), iv, openssl.PKCS7_PADDING)
-	encipherTargetFolderName := base64.URLEncoding.EncodeToString(dst)
+	//加密, 不用AES加密了，每次都TM不一样老有重复文件
+	encipherTargetFolderName := fmt.Sprintf("%x", md5.Sum([]byte(targetFolderName)))
 
 	// 调用ffmpeg进行切片
 	cmd = exec.Command("ffmpeg", "-y", "-hwaccel", "videotoolbox", "-i", sourceFile,
