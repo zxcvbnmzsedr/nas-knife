@@ -76,6 +76,9 @@ func GetFileDetail(host string, token string, path string) (GetFileDetailResp, e
 	if err != nil {
 		return resp, err
 	}
+	if resp.Code != 200 {
+		return GetFileDetailResp{}, fmt.Errorf("获取文件详情失败: %s", resp.Message)
+	}
 	return resp, nil
 }
 
