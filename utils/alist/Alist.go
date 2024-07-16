@@ -192,7 +192,7 @@ func GetTaskProcess(host string, token string, taskId string) TaskInfoResp {
 }
 
 func refresh(host string, token string, path string) {
-	url := host + "/api/fs/get"
+	url := host + "/api/fs/list"
 	dir, _ := filepath.Split(path)
 	a := `{"path":"` + dir + `,"password":"","page":1,"per_page":0,"refresh":true}`
 	client := &http.Client{}
