@@ -115,6 +115,7 @@ func slice(alistHost string, alistToken string, tsFilePath string, keyPath strin
 	// 上传ts文件
 	tsFileByte, err := os.ReadFile("out.ts")
 	if err != nil {
+		fmt.Println("读取ts文件失败", err.Error())
 		return err
 	}
 	tsFile, err := alist.PutFile(alistHost, alistToken, tsFilePath+encipherTargetFolderName+".ts", tsFileByte)

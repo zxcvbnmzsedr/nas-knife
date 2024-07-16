@@ -52,7 +52,6 @@ func GetFileDetail(host string, token string, path string) (GetFileDetailResp, e
 	client := &http.Client{}
 	req, err := http.NewRequest(method, url, bytes.NewReader(data))
 	resp := GetFileDetailResp{}
-
 	if err != nil {
 		return resp, err
 	}
@@ -72,8 +71,10 @@ func GetFileDetail(host string, token string, path string) (GetFileDetailResp, e
 		fmt.Println(err)
 		return resp, err
 	}
+	fmt.Println("文件详情", string(body))
 	err = json.Unmarshal(body, &resp)
 	if err != nil {
+		fmt.Println(err)
 		return resp, err
 	}
 	if resp.Code != 200 {
@@ -116,7 +117,9 @@ func PutFile(host string, token string, path string, file []byte) (GetFileDetail
 		return GetFileDetailResp{}, err
 	}
 	err = json.Unmarshal(body, &resp)
+	fmt.Println(resp)
 	if resp.Code != 200 {
+		fmt.Println(resp.Message)
 		return GetFileDetailResp{}, fmt.Errorf("上传失败: %s", resp.Message)
 	}
 	// 获取上传任务
@@ -176,4 +179,5 @@ func refresh(host string, token string, path string) {
 	req.Header.Add("Authorization", token)
 	req.Header.Add("User-Agent", "NasKnife/1.0.0")
 	_, _ = client.Do(req)
+	fmt.Println("刷新成功")
 }
