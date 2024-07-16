@@ -144,7 +144,7 @@ func putFile(host string, token string, path string, size int64, reader io.Reade
 			taskBar.Finish()
 			break
 		}
-		time.Sleep(time.Millisecond)
+		time.Sleep(time.Second)
 	}
 	return loopGetFile(host, token, path)
 }
@@ -153,7 +153,8 @@ func loopGetFile(host string, token string, path string) (GetFileDetailResp, err
 	fileDetail, err := GetFileDetail(host, token, path)
 	if err != nil {
 		if strings.Contains(err.Error(), "object not found") {
-			time.Sleep(time.Millisecond)
+			time.Sleep(time.Second)
+			fmt.Println("递归获取文件....." + path)
 			return loopGetFile(host, token, path)
 		}
 	}
