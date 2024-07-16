@@ -79,7 +79,7 @@ func slice(alistHost string, alistToken string, tsFilePath string, keyPath strin
 	iv, _ := cmd.CombinedOutput()
 
 	encipherFileByte, _ := os.ReadFile("encipher.key")
-	encipherFile, err := alist.PutFile(alistHost, alistToken, keyPath+targetFolderName+"/encipher.key", encipherFileByte)
+	encipherFile, err := alist.PutFileForByte(alistHost, alistToken, keyPath+targetFolderName+"/encipher.key", encipherFileByte)
 
 	// 将这些信息写入到key.keyinfo文件中，第一行为alist的key路径，第二行是秘钥路径，第三行是iv
 	if err = os.WriteFile("./key.keyinfo", []byte(alistHost+"/d"+keyPath+targetFolderName+"/encipher.key?sign="+encipherFile.Data.Sign+"\n"+"./encipher.key\n"+string(iv)), 0666); err != nil {
@@ -107,18 +107,21 @@ func slice(alistHost string, alistToken string, tsFilePath string, keyPath strin
 	}
 
 	posterFileByte, _ := os.ReadFile("poster.jpg")
-	_, err = alist.PutFile(alistHost, alistToken, keyPath+targetFolderName+"/poster.jpg", posterFileByte)
+	_, err = alist.PutFileForByte(alistHost, alistToken, keyPath+targetFolderName+"/poster.jpg", posterFileByte)
 	if err != nil {
 		return err
 	}
-
 	// 上传ts文件
-	tsFileByte, err := os.ReadFile("out.ts")
+	tsFileByte, err := os.Open("out.ts")
 	if err != nil {
 		fmt.Println("读取ts文件失败", err.Error())
 		return err
 	}
-	tsFile, err := alist.PutFile(alistHost, alistToken, tsFilePath+encipherTargetFolderName+".ts", tsFileByte)
+	tsFile, err := alist.PutFileForFile(alistHost, alistToken, tsFilePath+encipherTargetFolderName+".ts", tsFileByte)
+	if err != nil {
+		return err
+	}
+	err = tsFileByte.Close()
 	if err != nil {
 		return err
 	}
@@ -134,7 +137,7 @@ func slice(alistHost string, alistToken string, tsFilePath string, keyPath strin
 				mediapl.Segments[i].URI = strings.Replace(mediapl.Segments[i].URI, "out.ts", encipherTargetFolderName+".ts", -1) + "?sign=" + tsFile.Data.Sign
 			}
 		}
-		m3u8File, err := alist.PutFile(alistHost, alistToken, keyPath+targetFolderName+"/out.m3u8", mediapl.Encode().Bytes())
+		m3u8File, err := alist.PutFileForByte(alistHost, alistToken, keyPath+targetFolderName+"/out.m3u8", mediapl.Encode().Bytes())
 		if err != nil {
 			return err
 		}
@@ -144,7 +147,7 @@ func slice(alistHost string, alistToken string, tsFilePath string, keyPath strin
 			log.Fatal(err)
 		}
 		movieStrmFile, _ := os.ReadFile("movie.strm")
-		_, err = alist.PutFile(alistHost, alistToken, keyPath+targetFolderName+"/movie.strm", movieStrmFile)
+		_, err = alist.PutFileForByte(alistHost, alistToken, keyPath+targetFolderName+"/movie.strm", movieStrmFile)
 		if err != nil {
 			return err
 		}

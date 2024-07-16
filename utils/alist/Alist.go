@@ -1,6 +1,7 @@
 package alist
 
 import (
+	"bufio"
 	"bytes"
 	"encoding/json"
 	"fmt"
@@ -82,16 +83,24 @@ func GetFileDetail(host string, token string, path string) (GetFileDetailResp, e
 	}
 	return resp, nil
 }
+func PutFileForFile(host string, token string, path string, file *os.File) (GetFileDetailResp, error) {
+	reader := bufio.NewReader(file)
+	fileInfo, _ := file.Stat()
+	return putFile(host, token, path, fileInfo.Size(), reader)
 
-func PutFile(host string, token string, path string, file []byte) (GetFileDetailResp, error) {
+}
+func PutFileForByte(host string, token string, path string, file []byte) (GetFileDetailResp, error) {
+	reader := bytes.NewReader(file)
+	return putFile(host, token, path, int64(reader.Len()), reader)
+}
+
+func putFile(host string, token string, path string, size int64, reader io.Reader) (GetFileDetailResp, error) {
 	fmt.Println("上传文件", path)
 	url := host + "/api/fs/put"
-
 	client := &http.Client{}
-	reader := bytes.NewReader(file)
 
 	// create bar
-	bar := pb.New(reader.Len()).SetRefreshRate(time.Second).SetWriter(os.Stdout).Set(pb.Bytes, true).Set(pb.SIBytesPrefix, true).Start()
+	bar := pb.New64(size).SetRefreshRate(time.Second).SetWriter(os.Stdout).Set(pb.Bytes, true).Set(pb.SIBytesPrefix, true).Start()
 	r := bar.NewProxyReader(reader)
 
 	req, err := http.NewRequest("PUT", url, r)
