@@ -10,6 +10,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 )
 
@@ -145,8 +146,18 @@ func putFile(host string, token string, path string, size int64, reader io.Reade
 		}
 		time.Sleep(time.Millisecond)
 	}
+	return loopGetFile(host, token, path)
+}
+func loopGetFile(host string, token string, path string) (GetFileDetailResp, error) {
 	refresh(host, token, path)
-	return GetFileDetail(host, token, path)
+	fileDetail, err := GetFileDetail(host, token, path)
+	if err != nil {
+		if strings.Contains(err.Error(), "object not found") {
+			time.Sleep(time.Millisecond)
+			return loopGetFile(host, token, path)
+		}
+	}
+	return fileDetail, err
 }
 
 func GetTaskProcess(host string, token string, taskId string) TaskInfoResp {
