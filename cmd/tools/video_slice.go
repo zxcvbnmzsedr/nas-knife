@@ -108,6 +108,9 @@ func slice(alistHost string, alistToken string, tsFilePath string, keyPath strin
 
 	posterFileByte, _ := os.ReadFile("poster.jpg")
 	_, err = alist.PutFile(alistHost, alistToken, keyPath+targetFolderName+"/poster.jpg", posterFileByte)
+	if err != nil {
+		return err
+	}
 
 	// 上传ts文件
 	tsFileByte, _ := os.ReadFile("out.ts")

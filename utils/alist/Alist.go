@@ -112,7 +112,9 @@ func PutFile(host string, token string, path string, file []byte) (GetFileDetail
 		return GetFileDetailResp{}, err
 	}
 	err = json.Unmarshal(body, &resp)
-
+	if resp.Code != 200 {
+		return GetFileDetailResp{}, fmt.Errorf("上传失败: %s", resp.Message)
+	}
 	// 获取上传任务
 	taskBar := pb.StartNew(100)
 	for {
