@@ -3,9 +3,11 @@ package tools
 import (
 	"bytes"
 	"crypto/md5"
+	"crypto/rand"
 	"fmt"
 	"github.com/grafov/m3u8"
 	"github.com/spf13/cobra"
+	"io"
 	"io/fs"
 	"log"
 	"nas-knif/utils/alist"
@@ -98,23 +100,18 @@ func slice(opts Options) error {
 	}
 
 	// 先创建秘钥
-	cmd := exec.Command("sh", "-c", "openssl rand 16 > ./encipher.key")
-	err := cmd.Run()
-	if err != nil {
+	if err := generateKey(); err != nil {
 		return err
 	}
-	fmt.Println("生成秘钥成功")
-
-	// 获取16位随机字符串
-	cmd = exec.Command("sh", "-c", "openssl rand -hex 16")
 	// 16位字符串字符串
-	iv, _ := cmd.CombinedOutput()
+	iv := generateHexKey()
+	fmt.Println("生成秘钥成功")
 
 	encipherFileByte, _ := os.ReadFile("encipher.key")
 	encipherFile, err := alist.PutFileForByte(alistHost, alistToken, keyPath+targetFolderName+"/encipher.key", encipherFileByte)
 
 	// 将这些信息写入到key.keyinfo文件中，第一行为alist的key路径，第二行是秘钥路径，第三行是iv
-	if err = os.WriteFile("./key.keyinfo", []byte(alistHost+"/d"+keyPath+targetFolderName+"/encipher.key?sign="+encipherFile.Data.Sign+"\n"+"./encipher.key\n"+string(iv)), 0666); err != nil {
+	if err = os.WriteFile("./key.keyinfo", []byte(alistHost+"/d"+keyPath+targetFolderName+"/encipher.key?sign="+encipherFile.Data.Sign+"\n"+"./encipher.key\n"+iv), 0666); err != nil {
 		log.Fatal(err)
 	}
 	fmt.Println("生成KeyInfo成功")
@@ -122,17 +119,19 @@ func slice(opts Options) error {
 	encipherTargetFolderName := fmt.Sprintf("%x", md5.Sum([]byte(targetFolderName)))
 
 	// 调用ffmpeg进行切片
-	cmd = exec.Command("ffmpeg", "-y", "-hwaccel", "videotoolbox", "-i", sourceFile,
+	cmd := exec.Command("ffmpeg", "-y", "-hwaccel", "videotoolbox", "-i", sourceFile,
 		"-vcodec", "copy", "-acodec", "copy",
 		"-f", "hls", "-hls_time", "15", "-hls_list_size", "0", "-hls_key_info_file", "./key.keyinfo", "-hls_playlist_type", "vod", "-hls_flags", "single_file",
-		"-hls_base_url", alistHost+"/d"+tsFilePath+"/",
+		"-hls_base_url", alistHost+"/d"+tsFilePath,
 		"out.m3u8")
+	fmt.Println("切片命令 ", cmd.String())
 	err = ExecCmd(cmd)
 	if err != nil {
 		return err
 	}
 	// 生成封面图
 	cmd = exec.Command("ffmpeg", "-i", sourceFile, "-y", "-f", "image2", "-frames:", "1", "poster.jpg")
+	fmt.Println("生成封面图 ", cmd.String())
 	err = ExecCmd(cmd)
 	if err != nil {
 		return err
@@ -204,7 +203,7 @@ func slice(opts Options) error {
 func GetFiles(folder string) (filesList []string) {
 	err := filepath.Walk(folder, func(path string, file fs.FileInfo, err error) error {
 		if !file.IsDir() {
-			filesList = append(filesList, path)
+			filesList = append(filesList, filepath.ToSlash(path))
 		}
 		return nil
 	})
@@ -212,4 +211,35 @@ func GetFiles(folder string) (filesList []string) {
 		return nil
 	}
 	return filesList
+}
+
+func generateKey() error {
+	key := make([]byte, 16)
+	_, err := io.ReadFull(rand.Reader, key)
+	if err != nil {
+		return err
+	}
+
+	file, err := os.Create("./encipher.key")
+	if err != nil {
+		return err
+	}
+	defer file.Close()
+
+	_, err = file.Write(key)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func generateHexKey() string {
+	key := make([]byte, 16)
+	_, err := rand.Read(key)
+	if err != nil {
+		fmt.Println("Error generating random key:", err)
+		return ""
+	}
+	return fmt.Sprintf("%x", key)
 }
