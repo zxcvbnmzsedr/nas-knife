@@ -21,7 +21,8 @@ type GetFileDetailResp struct {
 	Code    int    `json:"code"`
 	Message string `json:"message"`
 	Data    struct {
-		Sign string `json:"sign"`
+		Sign   string `json:"sign"`
+		RawURL string `json:"raw_url"`
 	} `json:"data"`
 }
 type TaskInfo struct {
@@ -73,7 +74,6 @@ func GetFileDetail(host string, token string, path string) (GetFileDetailResp, e
 		fmt.Println(err)
 		return resp, err
 	}
-	fmt.Println("文件详情", string(body))
 	err = json.Unmarshal(body, &resp)
 	if err != nil {
 		fmt.Println(err)
@@ -200,8 +200,37 @@ func refresh(host string, token string, path string) {
 	req.Header.Add("Authorization", token)
 	req.Header.Add("User-Agent", "NasKnife/1.0.0")
 	req.Header.Add("Content-Type", "application/json")
-	resp, _ := client.Do(req)
-	body, _ := io.ReadAll(resp.Body)
+	_, _ = client.Do(req)
+}
 
-	fmt.Println("刷新缓存", string(body))
+type RemoveFileReq struct {
+	Dir   string   `json:"dir"`
+	Names []string `json:"names"`
+}
+
+func RemoveFile(host string, token string, path string) error {
+	url := host + "/api/fs/remove"
+	dir, fileName := filepath.Split(path)
+	client := &http.Client{}
+	data, _ := json.Marshal(RemoveFileReq{
+		Dir:   dir,
+		Names: []string{fileName},
+	})
+	req, _ := http.NewRequest("POST", url, bytes.NewReader(data))
+	req.Header.Add("Authorization", token)
+	req.Header.Add("User-Agent", "NasKnife/1.0.0")
+	req.Header.Add("Content-Type", "application/json")
+	res, _ := client.Do(req)
+	defer res.Body.Close()
+	resp := TaskInfoResp{}
+	body, err := io.ReadAll(res.Body)
+	if err != nil {
+		fmt.Println(err)
+	}
+
+	err = json.Unmarshal(body, &resp)
+	if resp.Code != 200 {
+		return fmt.Errorf("文件删除失败")
+	}
+	return nil
 }

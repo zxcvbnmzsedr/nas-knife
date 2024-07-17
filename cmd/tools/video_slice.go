@@ -5,6 +5,7 @@ import (
 	"crypto/md5"
 	"crypto/rand"
 	"fmt"
+	"github.com/AlecAivazis/survey/v2"
 	"github.com/grafov/m3u8"
 	"github.com/spf13/cobra"
 	"io"
@@ -60,7 +61,27 @@ func NewVideoSlice() *cobra.Command {
 					kind := path.Ext(file)
 					// 检查是否为常见的视频文件类型
 					if kind == ".mp4" || kind == ".avi" || kind == ".mkv" || kind == ".flv" || kind == ".wmv" {
-						needVlFiles = append(needVlFiles, file)
+						_, fileName := filepath.Split(file)
+						opts.TargetFolderName = strings.TrimSuffix(fileName, path.Ext(fileName))
+						//加密, 不用AES加密了，每次都TM不一样老有重复文件
+						encipherTargetFolderName := fmt.Sprintf("%x", md5.Sum([]byte(opts.TargetFolderName)))
+						_, existError := alist.GetFileDetail(opts.AlistHost, opts.AuthKey, opts.TsFilePath+encipherTargetFolderName+".ts")
+						if existError == nil {
+							var o string
+							prompt := &survey.Input{
+								Message: file + "文件已经存在，是否替换(y) default n ?",
+							}
+							survey.AskOne(prompt, &o)
+							if o == "y" {
+								err := alist.RemoveFile(opts.AlistHost, opts.AuthKey, opts.TsFilePath+encipherTargetFolderName+".ts")
+								if err != nil {
+									return err
+								}
+								needVlFiles = append(needVlFiles, file)
+							}
+						} else {
+							needVlFiles = append(needVlFiles, file)
+						}
 					}
 				}
 				for _, file := range needVlFiles {
@@ -98,6 +119,8 @@ func slice(opts Options) error {
 	if keyPath == "" {
 		keyPath = tsFilePath
 	}
+	//加密, 不用AES加密了，每次都TM不一样老有重复文件
+	encipherTargetFolderName := fmt.Sprintf("%x", md5.Sum([]byte(opts.TargetFolderName)))
 
 	// 先创建秘钥
 	if err := generateKey(); err != nil {
@@ -115,9 +138,6 @@ func slice(opts Options) error {
 		log.Fatal(err)
 	}
 	fmt.Println("生成KeyInfo成功")
-	//加密, 不用AES加密了，每次都TM不一样老有重复文件
-	encipherTargetFolderName := fmt.Sprintf("%x", md5.Sum([]byte(targetFolderName)))
-
 	// 调用ffmpeg进行切片
 	cmd := exec.Command("ffmpeg", "-y", "-hwaccel", "videotoolbox", "-i", sourceFile,
 		"-vcodec", "copy", "-acodec", "copy",
