@@ -50,6 +50,9 @@ func NewVideoSlice() *cobra.Command {
 			if len(opts.AuthKey) == 0 {
 				return fmt.Errorf("AuthKey别空啊，我要提取签名文件")
 			}
+			if opts.KeyPath == "" {
+				opts.KeyPath = opts.TsFilePath
+			}
 			fileInfo, err := os.Stat(opts.SourceFile)
 			if err != nil {
 				return fmt.Errorf("sourceFile有点不太对 %s", err.Error())
@@ -73,8 +76,10 @@ func NewVideoSlice() *cobra.Command {
 							}
 							survey.AskOne(prompt, &o)
 							if o == "y" {
-								err := alist.RemoveFile(opts.AlistHost, opts.AuthKey, opts.TsFilePath+encipherTargetFolderName+".ts")
-								if err != nil {
+								if err := alist.RemoveFile(opts.AlistHost, opts.AuthKey, opts.TsFilePath+encipherTargetFolderName+".ts"); err != nil {
+									return err
+								}
+								if err := alist.RemoveFile(opts.AlistHost, opts.AuthKey, opts.KeyPath+opts.TargetFolderName); err != nil {
 									return err
 								}
 								needVlFiles = append(needVlFiles, file)
@@ -116,9 +121,6 @@ func slice(opts Options) error {
 	keyPath := opts.KeyPath
 	sourceFile := opts.SourceFile
 	targetFolderName := opts.TargetFolderName
-	if keyPath == "" {
-		keyPath = tsFilePath
-	}
 	//加密, 不用AES加密了，每次都TM不一样老有重复文件
 	encipherTargetFolderName := fmt.Sprintf("%x", md5.Sum([]byte(opts.TargetFolderName)))
 
