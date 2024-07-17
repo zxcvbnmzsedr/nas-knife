@@ -65,16 +65,18 @@ func NewVideoSlice() *cobra.Command {
 					// 检查是否为常见的视频文件类型
 					if kind == ".mp4" || kind == ".avi" || kind == ".mkv" || kind == ".flv" || kind == ".wmv" {
 						_, fileName := filepath.Split(file)
-						opts.TargetFolderName = strings.TrimSuffix(fileName, path.Ext(fileName))
 						//加密, 不用AES加密了，每次都TM不一样老有重复文件
-						encipherTargetFolderName := fmt.Sprintf("%x", md5.Sum([]byte(opts.TargetFolderName)))
+						encipherTargetFolderName := fmt.Sprintf("%x", md5.Sum([]byte(strings.TrimSuffix(fileName, path.Ext(fileName)))))
 						_, existError := alist.GetFileDetail(opts.AlistHost, opts.AuthKey, opts.TsFilePath+encipherTargetFolderName+".ts")
 						if existError == nil {
 							var o string
 							prompt := &survey.Input{
 								Message: file + "文件已经存在，是否替换(y) default n ?",
 							}
-							survey.AskOne(prompt, &o)
+							err := survey.AskOne(prompt, &o)
+							if err != nil {
+								return err
+							}
 							if o == "y" {
 								if err := alist.RemoveFile(opts.AlistHost, opts.AuthKey, opts.TsFilePath+encipherTargetFolderName+".ts"); err != nil {
 									return err
@@ -89,6 +91,7 @@ func NewVideoSlice() *cobra.Command {
 						}
 					}
 				}
+				fmt.Println("上传文件列表", needVlFiles)
 				for _, file := range needVlFiles {
 					opts.SourceFile = file
 					if e := slice(opts); e != nil {
@@ -121,6 +124,7 @@ func slice(opts Options) error {
 	keyPath := opts.KeyPath
 	sourceFile := opts.SourceFile
 	targetFolderName := opts.TargetFolderName
+	fmt.Println("开始处理", opts)
 	//加密, 不用AES加密了，每次都TM不一样老有重复文件
 	encipherTargetFolderName := fmt.Sprintf("%x", md5.Sum([]byte(opts.TargetFolderName)))
 
@@ -138,6 +142,7 @@ func slice(opts Options) error {
 	// 将这些信息写入到key.keyinfo文件中，第一行为alist的key路径，第二行是秘钥路径，第三行是iv
 	if err = os.WriteFile("./key.keyinfo", []byte(alistHost+"/d"+keyPath+targetFolderName+"/encipher.key?sign="+encipherFile.Data.Sign+"\n"+"./encipher.key\n"+iv), 0666); err != nil {
 		log.Fatal(err)
+		return err
 	}
 	fmt.Println("生成KeyInfo成功")
 	// 调用ffmpeg进行切片
@@ -147,18 +152,15 @@ func slice(opts Options) error {
 		"-hls_base_url", alistHost+"/d"+tsFilePath,
 		"out.m3u8")
 	fmt.Println("切片命令 ", cmd.String())
-	err = ExecCmd(cmd)
-	if err != nil {
+	if err = ExecCmd(cmd); err != nil {
 		return err
 	}
 	// 生成封面图
 	cmd = exec.Command("ffmpeg", "-i", sourceFile, "-y", "-f", "image2", "-frames:", "1", "poster.jpg")
 	fmt.Println("生成封面图 ", cmd.String())
-	err = ExecCmd(cmd)
-	if err != nil {
+	if err = ExecCmd(cmd); err != nil {
 		return err
 	}
-
 	posterFileByte, _ := os.ReadFile("poster.jpg")
 	_, err = alist.PutFileForByte(alistHost, alistToken, keyPath+targetFolderName+"/poster.jpg", posterFileByte)
 	if err != nil {
