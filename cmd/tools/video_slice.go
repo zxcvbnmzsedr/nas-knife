@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"github.com/grafov/m3u8"
 	"github.com/spf13/cobra"
+	"io/fs"
 	"log"
 	"nas-knif/utils/alist"
 	"os"
@@ -46,11 +47,30 @@ func NewVideoSlice() *cobra.Command {
 			if len(opts.AuthKey) == 0 {
 				return fmt.Errorf("AuthKey别空啊，我要提取签名文件")
 			}
-			if len(opts.TargetFolderName) == 0 {
-				_, fileName := filepath.Split(opts.SourceFile)
-				opts.TargetFolderName = strings.TrimSuffix(fileName, path.Ext(fileName))
+			fileInfo, err := os.Stat(opts.SourceFile)
+			if err != nil {
+				return fmt.Errorf("sourceFile有点不太对 %s", err.Error())
 			}
-			return slice(opts)
+			if fileInfo.IsDir() {
+				files := GetFiles(opts.SourceFile)
+				var needVlFiles []string
+				for _, file := range files {
+					kind := path.Ext(file)
+					// 检查是否为常见的视频文件类型
+					if kind == ".mp4" || kind == ".avi" || kind == ".mkv" || kind == ".flv" || kind == ".wmv" {
+						needVlFiles = append(needVlFiles, file)
+					}
+				}
+				for _, file := range needVlFiles {
+					opts.SourceFile = file
+					if e := slice(opts); e != nil {
+						return e
+					}
+				}
+			} else {
+				return slice(opts)
+			}
+			return err
 		},
 	}
 	cmd.Flags().StringVar(&opts.AlistHost, "alist", "alist", "alist路径")
@@ -63,6 +83,10 @@ func NewVideoSlice() *cobra.Command {
 	return cmd
 }
 func slice(opts Options) error {
+	if len(opts.TargetFolderName) == 0 {
+		_, fileName := filepath.Split(opts.SourceFile)
+		opts.TargetFolderName = strings.TrimSuffix(fileName, path.Ext(fileName))
+	}
 	alistHost := opts.AlistHost
 	alistToken := opts.AuthKey
 	tsFilePath := opts.TsFilePath
@@ -175,4 +199,17 @@ func slice(opts Options) error {
 	}
 	return nil
 
+}
+
+func GetFiles(folder string) (filesList []string) {
+	err := filepath.Walk(folder, func(path string, file fs.FileInfo, err error) error {
+		if !file.IsDir() {
+			filesList = append(filesList, path)
+		}
+		return nil
+	})
+	if err != nil {
+		return nil
+	}
+	return filesList
 }

@@ -194,11 +194,14 @@ func GetTaskProcess(host string, token string, taskId string) TaskInfoResp {
 func refresh(host string, token string, path string) {
 	url := host + "/api/fs/list"
 	dir, _ := filepath.Split(path)
-	a := `{"path":"` + dir + `,"password":"","page":1,"per_page":0,"refresh":true}`
+	a := `{"path":"` + dir + `","password":"","page":1,"per_page":0,"refresh":true}`
 	client := &http.Client{}
 	req, _ := http.NewRequest("POST", url, bytes.NewReader([]byte(a)))
 	req.Header.Add("Authorization", token)
 	req.Header.Add("User-Agent", "NasKnife/1.0.0")
-	_, _ = client.Do(req)
-	fmt.Println("刷新成功")
+	req.Header.Add("Content-Type", "application/json")
+	resp, _ := client.Do(req)
+	body, _ := io.ReadAll(resp.Body)
+
+	fmt.Println("刷新缓存", string(body))
 }
