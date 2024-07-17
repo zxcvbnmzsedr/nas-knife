@@ -22,6 +22,7 @@ type Options struct {
 	SourceFile       string
 	TargetFolderName string
 	AuthKey          string
+	ClearSource      bool
 }
 
 func NewVideoSlice() *cobra.Command {
@@ -49,7 +50,7 @@ func NewVideoSlice() *cobra.Command {
 				_, fileName := filepath.Split(opts.SourceFile)
 				opts.TargetFolderName = strings.TrimSuffix(fileName, path.Ext(fileName))
 			}
-			return slice(opts.AlistHost, opts.AuthKey, opts.TsFilePath, opts.KeyPath, opts.SourceFile, opts.TargetFolderName)
+			return slice(opts)
 		},
 	}
 	cmd.Flags().StringVar(&opts.AlistHost, "alist", "alist", "alist路径")
@@ -58,9 +59,16 @@ func NewVideoSlice() *cobra.Command {
 	cmd.Flags().StringVarP(&opts.SourceFile, "source", "s", "", "源文件")
 	cmd.Flags().StringVarP(&opts.TargetFolderName, "folder", "f", "", "目录名")
 	cmd.Flags().StringVarP(&opts.AuthKey, "auth", "a", "", "Alist令牌")
+	cmd.Flags().BoolVarP(&opts.ClearSource, "clear", "c", false, "上传完是否删除源文件")
 	return cmd
 }
-func slice(alistHost string, alistToken string, tsFilePath string, keyPath string, sourceFile string, targetFolderName string) error {
+func slice(opts Options) error {
+	alistHost := opts.AlistHost
+	alistToken := opts.AuthKey
+	tsFilePath := opts.TsFilePath
+	keyPath := opts.KeyPath
+	sourceFile := opts.SourceFile
+	targetFolderName := opts.TargetFolderName
 	if keyPath == "" {
 		keyPath = tsFilePath
 	}
@@ -162,6 +170,9 @@ func slice(alistHost string, alistToken string, tsFilePath string, keyPath strin
 	_ = os.Remove("key.keyinfo")
 	_ = os.Remove("movie.strm")
 	_ = os.Remove("poster.jpg")
+	if opts.ClearSource {
+		_ = os.Remove(sourceFile)
+	}
 	return nil
 
 }
