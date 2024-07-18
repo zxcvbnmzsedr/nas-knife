@@ -148,7 +148,7 @@ func slice(opts Options) error {
 	}
 	fmt.Println("生成KeyInfo成功")
 	// 调用ffmpeg进行切片
-	cmd := exec.Command("ffmpeg", "-y", "-hwaccel", "videotoolbox", "-i", sourceFile,
+	cmd := exec.Command("ffmpeg", "-y", "-i", sourceFile,
 		"-vcodec", "copy", "-acodec", "copy",
 		"-f", "hls", "-hls_time", "5", "-hls_list_size", "0", "-hls_key_info_file", "./key.keyinfo", "-hls_playlist_type", "vod", "-hls_flags", "single_file",
 		"-hls_base_url", alistHost+"/d"+tsFilePath,
