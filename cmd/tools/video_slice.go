@@ -27,6 +27,7 @@ type Options struct {
 	TargetFolderName string
 	AuthKey          string
 	ClearSource      bool
+	PosterImg        bool
 }
 
 func NewVideoSlice() *cobra.Command {
@@ -111,6 +112,7 @@ func NewVideoSlice() *cobra.Command {
 	cmd.Flags().StringVarP(&opts.TargetFolderName, "folder", "f", "", "目录名")
 	cmd.Flags().StringVarP(&opts.AuthKey, "auth", "a", "", "Alist令牌")
 	cmd.Flags().BoolVarP(&opts.ClearSource, "clear", "c", false, "上传完是否删除源文件")
+	cmd.Flags().BoolVarP(&opts.PosterImg, "posterImg", "p", true, "是否生成封面图")
 	return cmd
 }
 func slice(opts Options) error {
@@ -148,7 +150,7 @@ func slice(opts Options) error {
 	// 调用ffmpeg进行切片
 	cmd := exec.Command("ffmpeg", "-y", "-hwaccel", "videotoolbox", "-i", sourceFile,
 		"-vcodec", "copy", "-acodec", "copy",
-		"-f", "hls", "-hls_time", "15", "-hls_list_size", "0", "-hls_key_info_file", "./key.keyinfo", "-hls_playlist_type", "vod", "-hls_flags", "single_file",
+		"-f", "hls", "-hls_time", "5", "-hls_list_size", "0", "-hls_key_info_file", "./key.keyinfo", "-hls_playlist_type", "vod", "-hls_flags", "single_file",
 		"-hls_base_url", alistHost+"/d"+tsFilePath,
 		"out.m3u8")
 	fmt.Println("切片命令 ", cmd.String())
@@ -156,15 +158,17 @@ func slice(opts Options) error {
 		return err
 	}
 	// 生成封面图
-	cmd = exec.Command("ffmpeg", "-i", sourceFile, "-y", "-f", "image2", "-frames:", "1", "poster.jpg")
-	fmt.Println("生成封面图 ", cmd.String())
-	if err = ExecCmd(cmd); err != nil {
-		return err
-	}
-	posterFileByte, _ := os.ReadFile("poster.jpg")
-	_, err = alist.PutFileForByte(alistHost, alistToken, keyPath+targetFolderName+"/poster.jpg", posterFileByte)
-	if err != nil {
-		return err
+	if opts.PosterImg {
+		cmd = exec.Command("ffmpeg", "-i", sourceFile, "-y", "-f", "image2", "-frames:", "1", "poster.jpg")
+		fmt.Println("生成封面图 ", cmd.String())
+		if err = ExecCmd(cmd); err != nil {
+			return err
+		}
+		posterFileByte, _ := os.ReadFile("poster.jpg")
+		_, err = alist.PutFileForByte(alistHost, alistToken, keyPath+targetFolderName+"/poster.jpg", posterFileByte)
+		if err != nil {
+			return err
+		}
 	}
 	// 上传ts文件
 	tsFileByte, err := os.Open("out.ts")
