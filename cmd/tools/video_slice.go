@@ -66,8 +66,10 @@ func NewVideoSlice() *cobra.Command {
 					// 检查是否为常见的视频文件类型
 					if kind == ".mp4" || kind == ".avi" || kind == ".mkv" || kind == ".flv" || kind == ".wmv" {
 						_, fileName := filepath.Split(file)
+						targetFolderName := strings.TrimSuffix(fileName, path.Ext(fileName))
+
 						//加密, 不用AES加密了，每次都TM不一样老有重复文件
-						encipherTargetFolderName := fmt.Sprintf("%x", md5.Sum([]byte(strings.TrimSuffix(fileName, path.Ext(fileName)))))
+						encipherTargetFolderName := fmt.Sprintf("%x", md5.Sum([]byte(targetFolderName)))
 						_, existError := alist.GetFileDetail(opts.AlistHost, opts.AuthKey, opts.TsFilePath+encipherTargetFolderName+".ts")
 						if existError == nil {
 							var o string
@@ -82,7 +84,7 @@ func NewVideoSlice() *cobra.Command {
 								if err := alist.RemoveFile(opts.AlistHost, opts.AuthKey, opts.TsFilePath+encipherTargetFolderName+".ts"); err != nil {
 									return err
 								}
-								if err := alist.RemoveFile(opts.AlistHost, opts.AuthKey, opts.KeyPath+opts.TargetFolderName); err != nil {
+								if err := alist.RemoveFile(opts.AlistHost, opts.AuthKey, opts.KeyPath+targetFolderName); err != nil {
 									return err
 								}
 								needVlFiles = append(needVlFiles, file)
