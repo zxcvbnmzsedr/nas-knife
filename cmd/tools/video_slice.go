@@ -30,29 +30,55 @@ type Options struct {
 	PosterImg        bool
 }
 
+// validateOptions 检查选项是否有效
+func validateOptions(opts Options) error {
+	if len(opts.AlistHost) == 0 {
+		return fmt.Errorf("host 不能为空，用于替换 m3u8 的实际路径，302 跳转用得到！")
+	}
+	if len(opts.TsFilePath) == 0 {
+		return fmt.Errorf("TsFilePath 不能为空， 用于存放 ts 文件")
+	}
+	if len(opts.SourceFile) == 0 {
+		return fmt.Errorf("SourceFile 不能为空，要切片的视频文件")
+	}
+	if len(opts.AuthKey) == 0 {
+		return fmt.Errorf("AuthKey 不能为空，我要提取签名文件")
+	}
+	if opts.KeyPath == "" {
+		opts.KeyPath = opts.TsFilePath
+	}
+	return nil
+}
+
+// existsOnAlist 检查文件是否在 alist 中存在
+func existsOnAlist(opts Options, encipherTargetFolderName string) bool {
+	_, existError := alist.GetFileDetail(opts.AlistHost, opts.AuthKey, opts.TsFilePath+encipherTargetFolderName+".ts")
+	return existError == nil
+}
+
+// isVideoFile 检查文件是否为常见的视频文件类型
+func isVideoFile(file string) bool {
+	kind := strings.ToLower(path.Ext(file))
+	return kind == ".mp4" || kind == ".avi" || kind == ".mkv" || kind == ".flv" || kind == ".wmv"
+}
+func removeFromAlist(opts Options, encipherTargetFolderName string, targetFolderName string) error {
+	if err := alist.RemoveFile(opts.AlistHost, opts.AuthKey, opts.TsFilePath+encipherTargetFolderName+".ts"); err != nil {
+		return err
+	}
+	if err := alist.RemoveFile(opts.AlistHost, opts.AuthKey, opts.KeyPath+targetFolderName); err != nil {
+		return err
+	}
+	return nil
+}
 func NewVideoSlice() *cobra.Command {
 	var opts Options
 	cmd := &cobra.Command{
 		Use:     "video_slice",
 		Aliases: []string{"vl"},
 		RunE: func(cmd *cobra.Command, args []string) error {
-			if len(opts.AlistHost) == 0 {
-				return fmt.Errorf("host别空啊，用于替换m3u8的实际路径，302跳转用得到！")
-			}
-			if len(opts.TsFilePath) == 0 {
-				return fmt.Errorf("TsFilePath别空啊， 用于存放ts文件")
-			}
-			if len(opts.KeyPath) == 0 {
-				opts.KeyPath = opts.TsFilePath
-			}
-			if len(opts.SourceFile) == 0 {
-				return fmt.Errorf("SourceFile别空啊，要切片的视频文件")
-			}
-			if len(opts.AuthKey) == 0 {
-				return fmt.Errorf("AuthKey别空啊，我要提取签名文件")
-			}
-			if opts.KeyPath == "" {
-				opts.KeyPath = opts.TsFilePath
+			// 检查必要的选项是否为空
+			if err := validateOptions(opts); err != nil {
+				return err
 			}
 			fileInfo, err := os.Stat(opts.SourceFile)
 			if err != nil {
@@ -62,16 +88,13 @@ func NewVideoSlice() *cobra.Command {
 				files := GetFiles(opts.SourceFile)
 				var needVlFiles []string
 				for _, file := range files {
-					kind := path.Ext(file)
 					// 检查是否为常见的视频文件类型
-					if kind == ".mp4" || kind == ".avi" || kind == ".mkv" || kind == ".flv" || kind == ".wmv" {
+					if isVideoFile(file) {
 						_, fileName := filepath.Split(file)
 						targetFolderName := strings.TrimSuffix(fileName, path.Ext(fileName))
-
 						//加密, 不用AES加密了，每次都TM不一样老有重复文件
 						encipherTargetFolderName := fmt.Sprintf("%x", md5.Sum([]byte(targetFolderName)))
-						_, existError := alist.GetFileDetail(opts.AlistHost, opts.AuthKey, opts.TsFilePath+encipherTargetFolderName+".ts")
-						if existError == nil {
+						if existsOnAlist(opts, encipherTargetFolderName) {
 							var o string
 							prompt := &survey.Input{
 								Message: file + "文件已经存在，是否替换(y) default n ?",
@@ -81,10 +104,7 @@ func NewVideoSlice() *cobra.Command {
 								return err
 							}
 							if o == "y" {
-								if err := alist.RemoveFile(opts.AlistHost, opts.AuthKey, opts.TsFilePath+encipherTargetFolderName+".ts"); err != nil {
-									return err
-								}
-								if err := alist.RemoveFile(opts.AlistHost, opts.AuthKey, opts.KeyPath+targetFolderName); err != nil {
+								if err := removeFromAlist(opts, encipherTargetFolderName, targetFolderName); err != nil {
 									return err
 								}
 								needVlFiles = append(needVlFiles, file)
