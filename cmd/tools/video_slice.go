@@ -152,14 +152,14 @@ func slice(opts Options) error {
 	//加密, 不用AES加密了，每次都TM不一样老有重复文件
 	encipherTargetFolderName := fmt.Sprintf("%x", md5.Sum([]byte(opts.TargetFolderName)))
 
-	// 先创建秘钥
-	if err := generateKey(); err != nil {
+	// 生成秘钥信息
+	iv, err := generateHexKey()
+	if err != nil {
 		return err
 	}
-	// 16位字符串字符串
-	iv := generateHexKey()
 	fmt.Println("生成秘钥成功")
 
+	// 上传秘钥文件
 	encipherFileByte, _ := os.ReadFile("encipher.key")
 	encipherFile, err := alist.PutFileForByte(alistHost, alistToken, keyPath+targetFolderName+"/encipher.key", encipherFileByte)
 
@@ -236,18 +236,21 @@ func slice(opts Options) error {
 		panic("unhandled default case")
 	}
 
-	// 清理文件
+	cleanFiles()
+	if opts.ClearSource {
+		_ = os.Remove(sourceFile)
+	}
+	return nil
+}
+
+// cleanFiles 清理临时文件
+func cleanFiles() {
 	_ = os.Remove("encipher.key")
 	_ = os.Remove("out.ts")
 	_ = os.Remove("out.m3u8")
 	_ = os.Remove("key.keyinfo")
 	_ = os.Remove("movie.strm")
 	_ = os.Remove("poster.jpg")
-	if opts.ClearSource {
-		_ = os.Remove(sourceFile)
-	}
-	return nil
-
 }
 
 func GetFiles(folder string) (filesList []string) {
@@ -263,33 +266,28 @@ func GetFiles(folder string) (filesList []string) {
 	return filesList
 }
 
-func generateKey() error {
+func generateHexKey() (string, error) {
 	key := make([]byte, 16)
 	_, err := io.ReadFull(rand.Reader, key)
 	if err != nil {
-		return err
+		return "", err
 	}
 
 	file, err := os.Create("./encipher.key")
 	if err != nil {
-		return err
+		return "", err
 	}
 	defer file.Close()
 
 	_, err = file.Write(key)
 	if err != nil {
-		return err
+		return "", err
 	}
-
-	return nil
-}
-
-func generateHexKey() string {
-	key := make([]byte, 16)
-	_, err := rand.Read(key)
+	key = make([]byte, 16)
+	_, err = rand.Read(key)
 	if err != nil {
 		fmt.Println("Error generating random key:", err)
-		return ""
+		return "", err
 	}
-	return fmt.Sprintf("%x", key)
+	return fmt.Sprintf("%x", key), nil
 }
