@@ -8,6 +8,7 @@ import (
 	"github.com/charmbracelet/lipgloss"
 	"github.com/fatih/color"
 	"io"
+	"nas-knif/cmd/adguard"
 	"nas-knif/cmd/docker"
 	"nas-knif/cmd/ssh_server"
 	"nas-knif/cmd/tools"
@@ -88,6 +89,8 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					return zerotier.InitialModel(), nil
 				case "Docker":
 					return docker.InitialModel(), nil
+				case "AdGuardHome":
+					return adguard.InitialModel(), nil
 				}
 			}
 			return m, nil
@@ -124,6 +127,7 @@ func main() {
 			item("SSH服务开启Root登录"),
 			item("Zerotier"),
 			item("Docker"),
+			item("AdGuardHome"),
 		}
 
 		const defaultWidth = 20
